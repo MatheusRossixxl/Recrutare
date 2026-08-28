@@ -1,0 +1,313 @@
+// ============================================================
+// RH SaaS — Schema do banco de dados
+// Multi-tenant: toda entidade de negócio pertence a uma Organization.
+// Usamos SQLite para rodar sem infraestrutura externa no MVP.
+// Para produção, troque o provider para "postgresql" e ajuste
+// a DATABASE_URL — o restante do schema é compatível.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Organização (tenant) ----------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+
+  users         User[]
+  companies     Company[]
+  jobs          Job[]
+  candidates    Candidate[]
+  interviews    Interview[]
+  activities    Activity[]
+  notifications Notification[]
+}
+
+// ---------------- Usuário ----------------
+
+model User {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  passwordHash   String
+  role           String       @default("RECRUITER")
+  avatarUrl      String?
+  createdAt      DateTime     @default(now())
+  active         Boolean      @default(true)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  interviewsAsInterviewer Interview[]    @relation("Interviewer")
+  evaluations             Evaluation[]
+  activities              Activity[]
+  notifications           Notification[]
+  jobsAsResponsible       Job[]          @relation("JobResponsible")
+
+  @@index([organizationId])
+}
+
+// ---------------- Empresa cliente ----------------
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  cnpj        String?
+  segment     String?
+  contactName String?
+  email       String?
+  phone       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Arquivamento (soft delete) — evita excluir a linha do banco e
+  // quebrar o relacionamento com vagas já criadas para esta empresa.
+  archived   Boolean   @default(false)
+  archivedAt DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  jobs Job[]
+
+  @@index([organizationId])
+  @@index([archived])
+}
+
+// ---------------- Vaga ----------------
+
+model Job {
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  requirements String
+  niceToHave   String?
+  salaryMin    Float?
+  salaryMax    Float?
+  contractType String    @default("CLT")
+  workModel    String    @default("ON_SITE")
+  location     String?
+  openings     Int       @default(1)
+  openedAt     DateTime?
+  deadline     DateTime?
+  status       String    @default("DRAFT")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Arquivamento (soft delete) — mantém candidaturas e entrevistas
+  // já vinculadas à vaga intactas, apenas oculta da listagem padrão.
+  archived   Boolean   @default(false)
+  archivedAt DateTime?
+
+  priority      String  @default("NORMAL")
+  responsibleId String?
+  responsible   User?   @relation("JobResponsible", fields: [responsibleId], references: [id])
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  applications Application[]
+  interviews   Interview[]
+
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([responsibleId])
+  @@index([archived])
+}
+
+// ---------------- Candidato ----------------
+
+model Candidate {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  city        String?
+  desiredRole String? // Cargo pretendido
+  linkedin    String?
+  portfolio   String?
+  education   String?
+  experience  String?
+  skills      String? // CSV simples de habilidades
+  languages   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Arquivamento (soft delete) — preserva candidaturas, entrevistas
+  // e avaliações já vinculadas ao candidato.
+  archived   Boolean   @default(false)
+  archivedAt DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  resumes      Resume[]
+  applications Application[]
+  interviews   Interview[]
+  evaluations  Evaluation[]
+  activities   Activity[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([archived])
+}
+
+// ---------------- Currículo ----------------
+
+model Resume {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  rawText   String?
+  aiSummary String?
+  createdAt DateTime @default(now())
+
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  @@index([candidateId])
+}
+
+// ---------------- Pipeline / Candidatura ----------------
+
+model Application {
+  id             String   @id @default(cuid())
+  stage          String   @default("NEW")
+  isFinalist     Boolean  @default(false)
+  isPresented    Boolean  @default(false)
+  aiMatchScore   Int?
+  aiAnalysisJson String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id])
+
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  stageHistory StageHistory[]
+
+  @@unique([jobId, candidateId])
+  @@index([jobId])
+  @@index([candidateId])
+}
+
+model StageHistory {
+  id            String   @id @default(cuid())
+  fromStage     String?
+  toStage       String
+  note          String?
+  createdAt     DateTime @default(now())
+  changedByName String?
+
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+}
+
+// ---------------- Entrevista ----------------
+
+model Interview {
+  id          String   @id @default(cuid())
+  scheduledAt DateTime
+  type        String   @default("VIDEO")
+  meetingLink String?
+  notes       String?
+  status      String   @default("SCHEDULED")
+  createdAt   DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id])
+
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  interviewerId String
+  interviewer   User   @relation("Interviewer", fields: [interviewerId], references: [id])
+
+  evaluation Evaluation?
+
+  @@index([organizationId])
+  @@index([jobId])
+  @@index([candidateId])
+}
+
+// ---------------- Avaliação ----------------
+
+model Evaluation {
+  id             String   @id @default(cuid())
+  communication  Int // 1-5
+  technicalSkill Int // 1-5
+  knowledge      Int // 1-5
+  jobFit         Int // 1-5
+  positives      String?
+  negatives      String?
+  notes          String?
+  recommendation String
+  createdAt      DateTime @default(now())
+
+  interviewId String    @unique
+  interview   Interview @relation(fields: [interviewId], references: [id])
+
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  evaluatorId String
+  evaluator   User   @relation(fields: [evaluatorId], references: [id])
+}
+
+// ---------------- Atividade (auditoria / feed) ----------------
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String // e.g. "STAGE_CHANGE", "CANDIDATE_CREATED", "EVALUATION_CREATED"
+  description String
+  createdAt   DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  @@index([organizationId])
+}
+
+// ---------------- Notificação ----------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+}
