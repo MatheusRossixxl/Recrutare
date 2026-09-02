@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Plus, Search } from "lucide-react";
+import { Users, Plus, Search, Upload, FileText } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -114,11 +114,20 @@ export default async function CandidatesPage({
           <h2 className="text-lg font-semibold">Candidatos</h2>
           <p className="text-sm text-muted-foreground">Banco de talentos da sua operação.</p>
         </div>
-        <Button asChild>
-          <Link href="/candidates/new">
-            <Plus className="h-4 w-4" /> Novo candidato
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          
+
+          <Button asChild variant="outline">
+            <Link href="/candidates/import">
+              <Upload className="h-4 w-4" /> Adicionar currículo
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/candidates/new">
+              <Plus className="h-4 w-4" /> Novo candidato
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <form className="flex flex-wrap items-center gap-3" method="get">

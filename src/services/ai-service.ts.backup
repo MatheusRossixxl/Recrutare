@@ -1387,58 +1387,18 @@ class AIService {
      * Não assumimos que uma empresa é startup apenas pelo nome.
      */
     function hasStartupEvidence(): boolean {
-      const professionalStartupText = normalize(
-        [
-          experienceText,
-          candidate.professionalSummary || "",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      /*
-       * "Startup" sozinho não é evidência suficiente.
-       * Isso evita falsos positivos como:
-       * "trabalhou na StartUp Solutions".
-       *
-       * A experiência precisa ter contexto profissional
-       * explícito de atuação em startup.
-       */
-
-      const explicitStartupPatterns = [
-        "experiencia em startup",
-        "experiencia com startup",
-        "experiencia em startups",
-        "experiencia com startups",
-        "trabalhou em startup",
-        "trabalhou em startups",
-        "atuou em startup",
-        "atuou em startups",
-        "atuava em startup",
-        "atuava em startups",
-        "vivencia em startup",
-        "vivencia com startup",
-        "vivencia em startups",
-        "vivencia com startups",
-        "ambiente de startup",
-        "ambiente de startups",
-        "empresa que e uma startup",
-    "empresa que era uma startup",
-    "a empresa e uma startup",
-    "a empresa era uma startup",
-    "empresa considerada uma startup",
-    "empresa reconhecida como startup",
-        "startup de tecnologia",
-        "startups de tecnologia",
-        "startup tech",
-        "startup em crescimento",
-        "startups em crescimento",
+      const startupTerms = [
+        "startup",
+        "startups",
         "scale up",
         "scale-up",
+        "ambiente de startup",
+        "empresa startup",
+        "empresa de tecnologia em crescimento",
       ];
 
-      return explicitStartupPatterns.some((pattern) =>
-        containsTerm(professionalStartupText, pattern)
+      return startupTerms.some((term) =>
+        containsTerm(candidateText, term)
       );
     }
 
@@ -1709,25 +1669,13 @@ class AIService {
      * O campo onde a informação foi encontrada NÃO altera
      * a pontuação.
      */
-    /*
-     * ---------------------------------------------------------
-     * PONTUAÇÃO DE COMPATIBILIDADE
-     * ---------------------------------------------------------
-     *
-     * Obrigatórios: 70 pontos
-     * Diferenciais: 15 pontos
-     * Experiência/relevância: 15 pontos
-     *
-     * Requisitos obrigatórios dominam a nota.
-     */
-
     const requiredScore =
       requiredRequirements.length > 0
         ? (
             requirementsFound.length /
             requiredRequirements.length
-          ) * 70
-        : 70;
+          ) * 55
+        : 55;
 
     const niceToHaveScore =
       niceToHaveRequirements.length > 0
@@ -1740,10 +1688,22 @@ class AIService {
     const experienceScore =
       hasRelevantExperience ? 15 : 0;
 
+    const educationScore =
+      !educationRequired
+        ? 10
+        : educationMatches
+          ? 10
+          : 0;
+
+    const informationScore =
+      candidateText.length > 0 ? 5 : 0;
+
     let matchScore = Math.round(
       requiredScore +
       niceToHaveScore +
-      experienceScore
+      experienceScore +
+      educationScore +
+      informationScore
     );
 
     /*

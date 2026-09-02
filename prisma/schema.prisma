@@ -130,20 +130,40 @@ model Job {
 // ---------------- Candidato ----------------
 
 model Candidate {
-  id          String   @id @default(cuid())
-  name        String
-  email       String
-  phone       String?
-  city        String?
-  desiredRole String? // Cargo pretendido
-  linkedin    String?
-  portfolio   String?
-  education   String?
-  experience  String?
-  skills      String? // CSV simples de habilidades
-  languages   String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  id                  String    @id @default(cuid())
+  name                String
+  email               String
+  phone               String?
+  city                String?
+  desiredRole         String? // Cargo pretendido
+  desiredRoles        String? // Cargos de interesse
+  professionalSummary String? // Resumo profissional
+  birthDate           DateTime?
+  secondaryEmail      String?
+
+  linkedin  String?
+  portfolio String?
+
+  education  String? // Formação acadêmica
+  courses    String? // Cursos e certificações
+  experience String?
+  skills     String? // CSV simples de habilidades
+  languages  String?
+
+  salaryExpectation     Float? // Pretensão salarial
+  hasDriverLicense      Boolean?
+  driverLicenseCategory String?
+
+  gender            String?
+  race              String?
+  sexualOrientation String?
+  genderIdentity    String?
+
+  address String?
+  country String?
+
+  notes     String?
+  createdAt DateTime @default(now())
 
   // Arquivamento (soft delete) — preserva candidaturas, entrevistas
   // e avaliações já vinculadas ao candidato.
@@ -167,13 +187,10 @@ model Candidate {
 // ---------------- Currículo ----------------
 
 model Resume {
-  id        String   @id @default(cuid())
-  fileName  String
-  fileUrl   String
-  rawText   String?
-  aiSummary String?
-  createdAt DateTime @default(now())
-
+  id          String   @id @default(cuid())
+  fileName    String
+  aiSummary   String?
+  createdAt   DateTime @default(now())
   candidateId String
   candidate   Candidate @relation(fields: [candidateId], references: [id])
 

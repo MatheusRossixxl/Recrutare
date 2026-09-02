@@ -18,8 +18,7 @@ export async function POST(req: Request) {
 
   const analysis = await aiService.matchCandidateToJob(
     application.job,
-    application.candidate,
-    application.candidate.resumes[0]?.rawText ?? undefined
+    application.candidate
   );
 
   await db.application.update({

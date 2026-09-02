@@ -16,7 +16,6 @@ import {
   INTERVIEW_TYPE_LABELS,
 } from "@/lib/constants";
 import { AIAnalysisPanel } from "@/components/candidates/ai-analysis-panel";
-import { ResumeUpload } from "@/components/candidates/resume-upload";
 import { CandidateArchiveButton, CandidateRestoreButton } from "@/components/candidates/candidate-archive-button";
 import { CandidateDeleteButton } from "@/components/candidates/candidate-delete-button";
 import { InterviewActions } from "@/components/interviews/interview-actions";
@@ -43,7 +42,78 @@ export default async function CandidateDetailPage({ params }: { params: { id: st
 
   if (!candidate) notFound();
 
-  const skills = candidate.skills?.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) ?? [];
+  function formatStructuredText(text?: string | null) {
+    if (!text) return null;
+
+    const normalized = text
+      .replace(/\\r\\n/g, "\\n")
+      .replace(/\\n{3,}/g, "\\n\\n")
+      .trim();
+
+    const lines = normalized
+      .split(/\\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const blocks: string[] = [];
+    let current: string[] = [];
+
+    const flush = () => {
+      if (current.length > 0) {
+        blocks.push(current.join("\\n"));
+        current = [];
+      }
+    };
+
+    for (const line of lines) {
+      const isNewBlock =
+        /^(Período|Periodo|Ano de conclusão|Ano de conclus[aã]o)\\b/i.test(line) &&
+        current.length > 0;
+
+      if (isNewBlock) {
+        flush();
+      }
+
+      current.push(line);
+    }
+
+    flush();
+
+    return blocks.map((block, index) => (
+      <div
+        key={index}
+        className={
+          index > 0
+            ? "border-t border-border pt-5 mt-5"
+            : ""
+        }
+      >
+        <p className="whitespace-pre-line leading-relaxed">
+          {block}
+        </p>
+      </div>
+    ));
+  }
+
+
+const skills = candidate.skills
+    ?.split(/[,;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean) ?? [];
+
+  const uniqueSkills = Array.from(
+    new Map(
+      skills.map((skill) => [
+        skill
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim(),
+        skill,
+      ])
+    ).values()
+  );
+
   const activeApplicationsCount = candidate.applications.filter(
     (a) => a.stage !== "HIRED" && a.stage !== "REJECTED"
   ).length;
@@ -94,6 +164,33 @@ export default async function CandidateDetailPage({ params }: { params: { id: st
                 </a>
               )}
             </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {candidate.birthDate && (
+                  <span>
+                    Nascimento: {candidate.birthDate.toLocaleDateString("pt-BR")}
+                  </span>
+                )}
+                {candidate.gender && (
+                  <span>
+                    Sexo: {candidate.gender}
+                  </span>
+                )}
+                {candidate.race && (
+                  <span>
+                    Raça/cor: {candidate.race}
+                  </span>
+                )}
+                {candidate.sexualOrientation && (
+                  <span>
+                    Orientação: {candidate.sexualOrientation}
+                  </span>
+                )}
+                {candidate.genderIdentity && (
+                  <span>
+                    Gênero: {candidate.genderIdentity}
+                  </span>
+                )}
+              </div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -128,37 +225,148 @@ export default async function CandidateDetailPage({ params }: { params: { id: st
             <CardHeader>
               <CardTitle>Perfil</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Formação</p>
-                <p>{candidate.education || "Não informado"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Experiência</p>
-                <p className="whitespace-pre-line">{candidate.experience || "Não informado"}</p>
-              </div>
-              {skills.length > 0 && (
+            <CardContent className="space-y-7 text-sm">
+
+              {candidate.professionalSummary && (
                 <div>
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">Habilidades</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {skills.map((skill) => (
-                      <Badge key={skill}>{skill}</Badge>
-                    ))}
-                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">Resumo profissional</p>
+                  <p className="whitespace-pre-line">{candidate.professionalSummary}</p>
                 </div>
               )}
-              {candidate.languages && (
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">Idiomas</p>
-                  <p>{candidate.languages}</p>
+                  <p className="text-xs font-medium text-muted-foreground">Cargo pretendido</p>
+                  <p>{candidate.desiredRole || "Não informado"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Cargos de interesse</p>
+                  <p>{candidate.desiredRoles || "Não informado"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Data de nascimento</p>
+                  <p>
+                    {candidate.birthDate
+                      ? candidate.birthDate.toLocaleDateString("pt-BR")
+                      : "Não informado"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">E-mail secundário</p>
+                  <p>{candidate.secondaryEmail || "Não informado"}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Formação acadêmica</p>
+                {candidate.education
+  ? formatStructuredText(candidate.education)
+  : <p>Não informado</p>}
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Cursos e certificações</p>
+                {candidate.courses
+  ? formatStructuredText(candidate.courses)
+  : <p>Não informado</p>}
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Experiência profissional</p>
+                {candidate.experience
+  ? formatStructuredText(candidate.experience)
+  : <p>Não informado</p>}
+              </div>
+
+              {uniqueSkills.length > 0 ? (
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    Habilidades
+                  </p>
+
+                  <details className="group">
+                    <summary className="cursor-pointer list-none">
+                      <div className="flex flex-wrap gap-1.5">
+                        {uniqueSkills.slice(0, 12).map((skill) => (
+                          <Badge key={skill}>{skill}</Badge>
+                        ))}
+                      </div>
+
+                      {uniqueSkills.length > 12 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          + {uniqueSkills.length - 12} habilidades — clique para ver todas
+                        </p>
+                      )}
+                    </summary>
+
+                    {uniqueSkills.length > 12 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
+                        {uniqueSkills.slice(12).map((skill) => (
+                          <Badge key={skill}>{skill}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </details>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Habilidades
+                  </p>
+                  <p>Não informado</p>
                 </div>
               )}
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Idiomas</p>
+                <p>{candidate.languages || "Não informado"}</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Pretensão salarial</p>
+                  <p>
+                    {candidate.salaryExpectation !== null && candidate.salaryExpectation !== undefined
+                      ? candidate.salaryExpectation.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Não informado"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">CNH</p>
+                  <p>
+                    {candidate.hasDriverLicense === true
+                      ? `Sim${candidate.driverLicenseCategory ? ` — Categoria ${candidate.driverLicenseCategory}` : ""}`
+                      : candidate.hasDriverLicense === false
+                        ? "Não"
+                        : "Não informado"}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Endereço</p>
+                <p>{candidate.address || "Não informado"}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">País</p>
+                <p>{candidate.country || "Não informado"}</p>
+              </div>
+
+
               {candidate.notes && (
-                <div>
+                <div className="border-t border-border pt-4">
                   <p className="text-xs font-medium text-muted-foreground">Observações</p>
                   <p className="whitespace-pre-line">{candidate.notes}</p>
                 </div>
               )}
+
             </CardContent>
           </Card>
 
@@ -211,36 +419,7 @@ export default async function CandidateDetailPage({ params }: { params: { id: st
         </div>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Currículos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ResumeUpload candidateId={candidate.id} />
-              {candidate.resumes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum currículo enviado ainda.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {candidate.resumes.map((resume) => {
-                    const extraction = resume.aiSummary
-                      ? (JSON.parse(resume.aiSummary) as ResumeExtraction)
-                      : null;
-                    return (
-                      <li key={resume.id} className="rounded-md border border-border p-3 text-sm">
-                        <a href={resume.fileUrl} target="_blank" className="font-medium text-primary hover:underline">
-                          {resume.fileName}
-                        </a>
-                        <p className="text-xs text-muted-foreground">{formatDateTime(resume.createdAt)}</p>
-                        {extraction && (
-                          <p className="mt-2 text-xs text-muted-foreground">{extraction.summary}</p>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          
 
           <Card>
             <CardHeader>

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
+import { aiService } from "@/services/ai-service";
 import type { PipelineStage } from "@/lib/constants";
 
 // ============================================================
@@ -302,12 +303,46 @@ export async function createCandidate(formData: FormData) {
       phone: String(formData.get("phone") || "") || null,
       city: String(formData.get("city") || "") || null,
       desiredRole: String(formData.get("desiredRole") || "") || null,
+      desiredRoles: String(formData.get("desiredRoles") || "") || null,
+      professionalSummary: String(formData.get("professionalSummary") || "") || null,
+
+      birthDate: formData.get("birthDate")
+        ? new Date(String(formData.get("birthDate")))
+        : null,
+
+      secondaryEmail: String(formData.get("secondaryEmail") || "") || null,
+
       linkedin: String(formData.get("linkedin") || "") || null,
       portfolio: String(formData.get("portfolio") || "") || null,
+
       education: String(formData.get("education") || "") || null,
+      courses: String(formData.get("courses") || "") || null,
       experience: String(formData.get("experience") || "") || null,
       skills: String(formData.get("skills") || "") || null,
       languages: String(formData.get("languages") || "") || null,
+
+      salaryExpectation: formData.get("salaryExpectation")
+        ? Number(formData.get("salaryExpectation"))
+        : null,
+
+      hasDriverLicense:
+        formData.get("hasDriverLicense") === "true"
+          ? true
+          : formData.get("hasDriverLicense") === "false"
+            ? false
+            : null,
+
+      driverLicenseCategory:
+        String(formData.get("driverLicenseCategory") || "") || null,
+
+      gender: String(formData.get("gender") || "") || null,
+      race: String(formData.get("race") || "") || null,
+      sexualOrientation: String(formData.get("sexualOrientation") || "") || null,
+      genderIdentity: String(formData.get("genderIdentity") || "") || null,
+
+      address: String(formData.get("address") || "") || null,
+      country: String(formData.get("country") || "") || null,
+
       notes: String(formData.get("notes") || "") || null,
     },
   });
@@ -359,12 +394,46 @@ export async function updateCandidate(candidateId: string, formData: FormData) {
       phone: String(formData.get("phone") || "") || null,
       city: String(formData.get("city") || "") || null,
       desiredRole: String(formData.get("desiredRole") || "") || null,
+      desiredRoles: String(formData.get("desiredRoles") || "") || null,
+      professionalSummary: String(formData.get("professionalSummary") || "") || null,
+
+      birthDate: formData.get("birthDate")
+        ? new Date(String(formData.get("birthDate")))
+        : null,
+
+      secondaryEmail: String(formData.get("secondaryEmail") || "") || null,
+
       linkedin: String(formData.get("linkedin") || "") || null,
       portfolio: String(formData.get("portfolio") || "") || null,
+
       education: String(formData.get("education") || "") || null,
+      courses: String(formData.get("courses") || "") || null,
       experience: String(formData.get("experience") || "") || null,
       skills: String(formData.get("skills") || "") || null,
       languages: String(formData.get("languages") || "") || null,
+
+      salaryExpectation: formData.get("salaryExpectation")
+        ? Number(formData.get("salaryExpectation"))
+        : null,
+
+      hasDriverLicense:
+        formData.get("hasDriverLicense") === "true"
+          ? true
+          : formData.get("hasDriverLicense") === "false"
+            ? false
+            : null,
+
+      driverLicenseCategory:
+        String(formData.get("driverLicenseCategory") || "") || null,
+
+      gender: String(formData.get("gender") || "") || null,
+      race: String(formData.get("race") || "") || null,
+      sexualOrientation: String(formData.get("sexualOrientation") || "") || null,
+      genderIdentity: String(formData.get("genderIdentity") || "") || null,
+
+      address: String(formData.get("address") || "") || null,
+      country: String(formData.get("country") || "") || null,
+
       notes: String(formData.get("notes") || "") || null,
     },
   });
@@ -404,6 +473,12 @@ export async function deleteCandidate(candidateId: string) {
       "Não é possível excluir definitivamente um candidato que possui candidaturas vinculadas. Arquive o candidato em vez disso."
     );
   }
+
+  await db.resume.deleteMany({
+    where: {
+      candidateId,
+    },
+  });
 
   await db.candidate.delete({
     where: {
@@ -502,15 +577,51 @@ export async function addCandidateToJob(candidateId: string, jobId: string) {
   const user = await requireSession();
 
   const [candidate, job] = await Promise.all([
-    db.candidate.findFirst({ where: { id: candidateId, organizationId: user.organizationId } }),
-    db.job.findFirst({ where: { id: jobId, organizationId: user.organizationId } }),
+    db.candidate.findFirst({
+      where: {
+        id: candidateId,
+        organizationId: user.organizationId,
+      },
+    }),
+    db.job.findFirst({
+      where: {
+        id: jobId,
+        organizationId: user.organizationId,
+      },
+    }),
   ]);
-  if (!candidate || !job) throw new Error("Candidato ou vaga inválidos");
 
-  const existing = await db.application.findFirst({ where: { candidateId, jobId } });
+  if (!candidate || !job) {
+    throw new Error("Candidato ou vaga inválidos");
+  }
+
+  const existing = await db.application.findFirst({
+    where: { candidateId, jobId },
+  });
+
   if (existing) return existing;
 
-  const application = await db.application.create({ data: { candidateId, jobId, stage: "NEW" } });
+  const application = await db.application.create({
+    data: {
+      candidateId,
+      jobId,
+      stage: "NEW",
+    },
+  });
+
+  try {
+    const analysis = await aiService.matchCandidateToJob(job, candidate);
+
+    await db.application.update({
+      where: { id: application.id },
+      data: {
+        aiMatchScore: analysis.matchScore,
+        aiAnalysisJson: JSON.stringify(analysis),
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao analisar compatibilidade do candidato:", error);
+  }
 
   await logActivity(
     user.organizationId,
@@ -522,9 +633,10 @@ export async function addCandidateToJob(candidateId: string, jobId: string) {
 
   revalidatePath("/pipeline");
   revalidatePath(`/candidates/${candidateId}`);
+  revalidatePath(`/jobs/${jobId}`);
+
   return application;
 }
-
 
 export async function removeCandidateFromJob(applicationId: string) {
   const user = await requireSession();

@@ -50,9 +50,38 @@ export default async function NewCandidatePage({ searchParams }: { searchParams:
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="desiredRole">Cargo pretendido</Label>
+                <Input id="desiredRole" name="desiredRole" placeholder="Ex: Gerente Comercial" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="desiredRoles">Cargos de interesse</Label>
+                <Input id="desiredRoles" name="desiredRoles" placeholder="Ex: Gerente Administrativo, Gerente Comercial" />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="desiredRole">Cargo pretendido</Label>
-              <Input id="desiredRole" name="desiredRole" placeholder="Ex: Desenvolvedor(a) Front-end" />
+              <Label htmlFor="professionalSummary">Resumo profissional</Label>
+              <Textarea
+                id="professionalSummary"
+                name="professionalSummary"
+                rows={4}
+                placeholder="Resumo da trajetória profissional do candidato"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="birthDate">Data de nascimento</Label>
+                <Input id="birthDate" name="birthDate" type="date" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="secondaryEmail">E-mail secundário</Label>
+                <Input id="secondaryEmail" name="secondaryEmail" type="email" />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -67,8 +96,23 @@ export default async function NewCandidatePage({ searchParams }: { searchParams:
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="education">Formação</Label>
-              <Input id="education" name="education" placeholder="Ex: Ciência da Computação — USP" />
+              <Label htmlFor="education">Formação acadêmica</Label>
+              <Textarea
+                id="education"
+                name="education"
+                rows={4}
+                placeholder="Graduação, pós-graduação, MBA, etc."
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="courses">Cursos e certificações</Label>
+              <Textarea
+                id="courses"
+                name="courses"
+                rows={4}
+                placeholder="Cursos, certificações e especializações"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -105,6 +149,68 @@ export default async function NewCandidatePage({ searchParams }: { searchParams:
                 </select>
               </div>
             )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="salaryExpectation">Pretensão salarial</Label>
+                <Input id="salaryExpectation" name="salaryExpectation" type="number" step="0.01" placeholder="3500" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="hasDriverLicense">Possui CNH?</Label>
+                <select
+                  id="hasDriverLicense"
+                  name="hasDriverLicense"
+                  defaultValue=""
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                >
+                  <option value="">Não informado</option>
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="driverLicenseCategory">Categoria da CNH</Label>
+                <Input id="driverLicenseCategory" name="driverLicenseCategory" placeholder="Ex: A,B" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="country">País</Label>
+                <Input id="country" name="country" defaultValue="Brasil" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="address">Endereço</Label>
+              <Input id="address" name="address" placeholder="Rua, número, bairro, cidade, estado, CEP" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="gender">Sexo</Label>
+                <Input id="gender" name="gender" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="race">Raça/cor</Label>
+                <Input id="race" name="race" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="sexualOrientation">Orientação sexual</Label>
+                <Input id="sexualOrientation" name="sexualOrientation" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="genderIdentity">Gênero</Label>
+                <Input id="genderIdentity" name="genderIdentity" />
+              </div>
+            </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="notes">Observações</Label>

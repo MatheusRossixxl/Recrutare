@@ -164,39 +164,170 @@ export default async function JobDetailPage({ params }: { params: { id: string }
             />
           ) : (
             <div className="space-y-2">
-              {job.applications.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex w-full items-center gap-4 rounded-md border border-border p-3 text-sm"
-                >
-                  <Link
-                    href={`/candidates/${app.candidateId}`}
-                    className="flex min-w-0 flex-1 items-center gap-6 rounded-md p-2 hover:bg-muted"
+              {job.applications.map((app) => {
+                let analysis: {
+                  summary?: string;
+                  requirementsFound?: string[];
+                  requirementsMissing?: string[];
+                  relevantExperience?: string[];
+                  strengths?: string[];
+                  concerns?: string[];
+                  suggestedQuestions?: string[];
+                } | null = null;
+
+                if (app.aiAnalysisJson) {
+                  try {
+                    analysis = JSON.parse(app.aiAnalysisJson);
+                  } catch {
+                    analysis = null;
+                  }
+                }
+
+                return (
+                  <div
+                    key={app.id}
+                    className="rounded-md border border-border text-sm"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{app.candidate.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {app.candidate.city || "Cidade não informada"}
-                      </p>
-                    </div>
+                    <div className="flex w-full items-center gap-4 p-3">
+                      <Link
+                        href={`/candidates/${app.candidateId}`}
+                        className="flex min-w-0 flex-1 items-center gap-6 rounded-md p-2 hover:bg-muted"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{app.candidate.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {app.candidate.city || "Cidade não informada"}
+                          </p>
+                        </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${PIPELINE_STAGE_COLOR[app.stage]}`} />
-                      <span className="text-xs text-muted-foreground">
-                        {PIPELINE_STAGE_LABELS[app.stage]}
-                      </span>
-                    </div>
-                  </Link>
+                        <div className="flex shrink-0 items-center gap-3">
+                          {app.aiMatchScore !== null && (
+                            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                              {app.aiMatchScore}% compatível
+                            </span>
+                          )}
 
-                  <div className="shrink-0">
-                    <CandidateJobRemoveButton
-                      applicationId={app.id}
-                      candidateName={app.candidate.name}
-                      jobTitle={job.title}
-                    />
+                          <div className="flex items-center gap-2">
+                            <span className={`h-2 w-2 rounded-full ${PIPELINE_STAGE_COLOR[app.stage]}`} />
+                            <span className="text-xs text-muted-foreground">
+                              {PIPELINE_STAGE_LABELS[app.stage]}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+
+                      {analysis && (
+                        <details className="relative shrink-0">
+                          <summary className="cursor-pointer list-none rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">
+                            Ver análise
+                          </summary>
+
+                          <div className="absolute right-0 z-20 mt-2 w-[420px] rounded-md border border-border bg-background p-4 shadow-lg">
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  Compatibilidade do candidato
+                                </p>
+                                {analysis.summary && (
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {analysis.summary}
+                                  </p>
+                                )}
+                              </div>
+
+                              {analysis.requirementsFound?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Requisitos encontrados
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.requirementsFound.map((item, index) => (
+                                      <li key={index}>✓ {item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {analysis.requirementsMissing?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Requisitos não encontrados
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.requirementsMissing.map((item, index) => (
+                                      <li key={index}>• {item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {analysis.strengths?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Pontos positivos
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.strengths.map((item, index) => (
+                                      <li key={index}>✓ {item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {analysis.concerns?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Pontos de atenção
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.concerns.map((item, index) => (
+                                      <li key={index}>• {item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+
+                              {analysis.relevantExperience?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Experiência relevante
+                                  </p>
+                                  <div className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.relevantExperience.map((item, index) => (
+                                      <p key={index}>{item}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {analysis.suggestedQuestions?.length ? (
+                                <div>
+                                  <p className="mb-1 text-xs font-semibold">
+                                    Perguntas sugeridas
+                                  </p>
+                                  <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {analysis.suggestedQuestions.map((item, index) => (
+                                      <li key={index}>• {item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </details>
+                      )}
+
+                      <div className="shrink-0">
+                        <CandidateJobRemoveButton
+                          applicationId={app.id}
+                          candidateName={app.candidate.name}
+                          jobTitle={job.title}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
