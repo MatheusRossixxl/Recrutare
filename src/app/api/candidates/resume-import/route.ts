@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractText } from "unpdf";
 
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
 import { logActivity } from "@/lib/actions";
-
-export const runtime = "nodejs";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -41,14 +40,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    // Extrai o texto do PDF em memória (edge-compatible, sem Buffer).
+    const { text } = await extractText(new Uint8Array(await file.arrayBuffer()), { mergePages: true });
 
-    const pdfParse = (await import("pdf-parse")).default;
-    const parsed = await pdfParse(buffer);
-
-    const rawText = parsed.text?.trim();
-
-
+    const rawText = (Array.isArray(text) ? text.join("\n") : text).trim();
 
     if (!rawText) {
       return NextResponse.json(
@@ -63,10 +58,6 @@ export async function POST(request: NextRequest) {
     const fileName = file.name;
 
     const extraction = await aiService.analyzeResume(rawText);
-
-    console.log("===== DEBUG IMPORTAÇÃO =====");
-    console.log("Data de nascimento extraída:", extraction.birthDate);
-    console.log("============================");
 
     const name = extraction.name?.trim();
     const email = extraction.email?.trim().toLowerCase();

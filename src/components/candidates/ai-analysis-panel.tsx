@@ -62,7 +62,7 @@ export function AIAnalysisPanel({
         {analysis && (
           <>
             <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-accent text-sm font-semibold">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-accent dark:border-primary/50 text-sm font-semibold">
                 {analysis.matchScore}%
               </div>
               <div>

@@ -35,7 +35,10 @@ export default async function PipelinePage({ searchParams }: { searchParams: { j
 
   const applications = await db.application.findMany({
     where: { jobId: activeJobId },
-    include: { candidate: true },
+    include: {
+      candidate: true,
+      stageHistory: { orderBy: { createdAt: "desc" } },
+    },
     orderBy: { updatedAt: "desc" },
   });
 

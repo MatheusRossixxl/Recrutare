@@ -9,20 +9,23 @@ import {
   Users,
   KanbanSquare,
   CalendarClock,
+  CalendarDays,
   Search,
   Settings,
   BarChart3,
   UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/companies", label: "Empresas", icon: Building2 },
   { href: "/jobs", label: "Vagas", icon: Briefcase },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { href: "/candidates", label: "Candidatos", icon: Users },
   { href: "/interviews", label: "Entrevistas", icon: CalendarClock },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
   { href: "/team", label: "Equipe", icon: UserCog },
 ];
@@ -76,6 +79,10 @@ export function Sidebar() {
           <Settings className="h-4 w-4" />
           Configurações
         </Link>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Tema</span>
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   );

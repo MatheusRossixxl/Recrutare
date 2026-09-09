@@ -1,18 +1,82 @@
 // ============================================================
 // RH SaaS — Schema do banco de dados
 // Multi-tenant: toda entidade de negócio pertence a uma Organization.
-// Usamos SQLite para rodar sem infraestrutura externa no MVP.
-// Para produção, troque o provider para "postgresql" e ajuste
-// a DATABASE_URL — o restante do schema é compatível.
+// PostgreSQL com enums nativos.
 // ============================================================
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------- Enums ----------------
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+}
+
+enum PipelineStage {
+  NEW
+  SCREENING
+  CONTACT
+  INTERVIEW
+  APPROVED_INTERVIEW
+  CLIENT_INTERVIEW
+  APPROVED_CLIENT
+  TEST
+  HIRED
+  DISQUALIFICATION
+  REPROVED
+  WITHDRAWAL
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  PAUSED
+  CLOSED
+}
+
+enum ContractType {
+  CLT
+  PJ
+  INTERNSHIP
+  TEMPORARY
+  FREELANCE
+}
+
+enum WorkModel {
+  ON_SITE
+  REMOTE
+  HYBRID
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  IN_PERSON
+  TECHNICAL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  DONE
+  CANCELED
+  RESCHEDULED
+}
+
+enum JobPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 // ---------------- Organização (tenant) ----------------
@@ -40,8 +104,12 @@ model User {
   name           String
   email          String       @unique
   passwordHash   String
-  role           String       @default("RECRUITER")
+  role           UserRole     @default(RECRUITER)
   avatarUrl      String?
+  googleAccessToken String?
+  googleRefreshToken String?
+  googleCalendarId String?
+  googleConnectedAt DateTime?
   createdAt      DateTime     @default(now())
   active         Boolean      @default(true)
   organizationId String
@@ -93,13 +161,13 @@ model Job {
   niceToHave   String?
   salaryMin    Float?
   salaryMax    Float?
-  contractType String    @default("CLT")
-  workModel    String    @default("ON_SITE")
+  contractType ContractType    @default(CLT)
+  workModel    WorkModel    @default(ON_SITE)
   location     String?
   openings     Int       @default(1)
   openedAt     DateTime?
   deadline     DateTime?
-  status       String    @default("DRAFT")
+  status       JobStatus    @default(DRAFT)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -108,7 +176,7 @@ model Job {
   archived   Boolean   @default(false)
   archivedAt DateTime?
 
-  priority      String  @default("NORMAL")
+  priority      JobPriority  @default(NORMAL)
   responsibleId String?
   responsible   User?   @relation("JobResponsible", fields: [responsibleId], references: [id])
 
@@ -201,7 +269,7 @@ model Resume {
 
 model Application {
   id             String   @id @default(cuid())
-  stage          String   @default("NEW")
+  stage          PipelineStage   @default(NEW)
   isFinalist     Boolean  @default(false)
   isPresented    Boolean  @default(false)
   aiMatchScore   Int?
@@ -224,8 +292,8 @@ model Application {
 
 model StageHistory {
   id            String   @id @default(cuid())
-  fromStage     String?
-  toStage       String
+  fromStage     PipelineStage?
+  toStage       PipelineStage
   note          String?
   createdAt     DateTime @default(now())
   changedByName String?
@@ -241,10 +309,13 @@ model StageHistory {
 model Interview {
   id          String   @id @default(cuid())
   scheduledAt DateTime
-  type        String   @default("VIDEO")
+  type        InterviewType   @default(VIDEO)
   meetingLink String?
   notes       String?
-  status      String   @default("SCHEDULED")
+  status      InterviewStatus   @default(SCHEDULED)
+  googleEventId String?
+  reminderMinutes Int?
+  reminderSent Boolean @default(false)
   createdAt   DateTime @default(now())
 
   organizationId String

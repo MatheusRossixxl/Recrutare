@@ -26,9 +26,9 @@ export default async function JobsPage({
       where: {
         organizationId: user.organizationId,
         ...(archivedFilter === "active" ? { archived: false } : archivedFilter === "archived" ? { archived: true } : {}),
-        ...(status ? { status } : {}),
+        ...(status ? { status: status as any } : {}),
         ...(companyId ? { companyId } : {}),
-        ...(workModel ? { workModel } : {}),
+        ...(workModel ? { workModel: workModel as any } : {}),
         ...(q
           ? {
               OR: [

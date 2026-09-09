@@ -6,7 +6,14 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
+import {
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  isGoogleConnected,
+} from "@/lib/google";
 import type { PipelineStage } from "@/lib/constants";
+import { NOTE_REQUIRED_STAGES } from "@/lib/constants";
 
 // ============================================================
 // EMPRESAS CLIENTES
@@ -180,7 +187,7 @@ export async function createJob(formData: FormData) {
       status: (String(formData.get("status") || "DRAFT") as any),
       openedAt: String(formData.get("status")) === "OPEN" ? new Date() : null,
       responsibleId: String(formData.get("responsibleId") || "") || null,
-      priority: String(formData.get("priority") || "NORMAL"),
+      priority: String(formData.get("priority") || "NORMAL") as any,
     },
   });
 
@@ -223,7 +230,7 @@ export async function updateJob(jobId: string, formData: FormData) {
       openings: Number(formData.get("openings") || 1),
       deadline: deadlineRaw ? new Date(deadlineRaw) : null,
       responsibleId: String(formData.get("responsibleId") || "") || null,
-      priority: String(formData.get("priority") || "NORMAL"),
+      priority: String(formData.get("priority") || "NORMAL") as any,
     },
   });
 
@@ -534,7 +541,7 @@ export async function restoreCandidate(candidateId: string) {
 // PIPELINE (Kanban)
 // ============================================================
 
-export async function moveApplicationStage(applicationId: string, toStage: PipelineStage) {
+export async function moveApplicationStage(applicationId: string, toStage: PipelineStage, note?: string) {
   const user = await requireSession();
 
   const application = await db.application.findFirst({
@@ -543,12 +550,18 @@ export async function moveApplicationStage(applicationId: string, toStage: Pipel
   });
   if (!application) throw new Error("Candidatura não encontrada");
 
+  // Observação obrigatória SOMENTE para Desclassificação, Reprovação e Desistência.
+  const trimmedNote = note?.trim() || "";
+  if ((NOTE_REQUIRED_STAGES as readonly string[]).includes(toStage) && !trimmedNote) {
+    throw new Error("Observação obrigatória para esta etapa.");
+  }
+
   await db.$transaction([
     db.application.update({
       where: { id: applicationId },
       data: {
         stage: toStage,
-        isFinalist: toStage === "APPROVED" || toStage === "CLIENT_INTERVIEW" || application.isFinalist,
+        isFinalist: toStage === "APPROVED_CLIENT" || toStage === "CLIENT_INTERVIEW" || application.isFinalist,
       },
     }),
     db.stageHistory.create({
@@ -556,6 +569,8 @@ export async function moveApplicationStage(applicationId: string, toStage: Pipel
         applicationId,
         fromStage: application.stage,
         toStage,
+        // Observação registrada no histórico SOMENTE para as 3 etapas exigidas.
+        note: (NOTE_REQUIRED_STAGES as readonly string[]).includes(toStage) ? trimmedNote : null,
         changedByName: user.name,
       },
     }),
@@ -723,6 +738,30 @@ export async function createInterview(formData: FormData) {
     },
   });
 
+  // Sincroniza com Google Calendar do entrevistador (best-effort: nunca
+  // bloqueia a criação local se o Google falhar).
+  try {
+    if (await isGoogleConnected(interviewerId)) {
+      const eventId = await createCalendarEvent(interviewerId, {
+        id: interview.id,
+        scheduledAt: interview.scheduledAt,
+        type: interview.type,
+        meetingLink: interview.meetingLink,
+        notes: interview.notes,
+        candidate: { name: candidate.name, email: candidate.email },
+        job: { title: job.title },
+      });
+      if (eventId) {
+        await db.interview.update({
+          where: { id: interview.id },
+          data: { googleEventId: eventId },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[Google Calendar] Falha ao criar evento:", error instanceof Error ? error.message : error);
+  }
+
   await logActivity(
     user.organizationId,
     user.id,
@@ -753,7 +792,13 @@ export async function updateInterview(interviewId: string, formData: FormData) {
   const scheduledAt = new Date(`${dateRaw}T${timeRaw}`);
   if (Number.isNaN(scheduledAt.getTime())) throw new Error("Data/horário inválidos");
 
-  await db.interview.update({
+  // Reagendamento (data/hora/entrevistador mudou) reseta o lembrete para
+  // permitir um novo envio; edição de outros campos preserva reminderSent.
+  const rescheduled =
+    existing.scheduledAt.getTime() !== scheduledAt.getTime() ||
+    existing.interviewerId !== interviewerId;
+
+  const updated = await db.interview.update({
     where: { id: interviewId },
     data: {
       interviewerId,
@@ -761,8 +806,28 @@ export async function updateInterview(interviewId: string, formData: FormData) {
       type: (String(formData.get("type") || "VIDEO") as any),
       meetingLink: String(formData.get("meetingLink") || "") || null,
       notes: String(formData.get("notes") || "") || null,
+      ...(rescheduled ? { reminderSent: false } : {}),
     },
+    include: { candidate: true, job: true },
   });
+
+  // Atualiza o evento existente no Google (nunca cria um novo aqui).
+  // Se a entrevista ainda não tem googleEventId, o sync manual cobre.
+  try {
+    if (updated.googleEventId && (await isGoogleConnected(updated.interviewerId))) {
+      await updateCalendarEvent(updated.interviewerId, updated.googleEventId, {
+        id: updated.id,
+        scheduledAt: updated.scheduledAt,
+        type: updated.type,
+        meetingLink: updated.meetingLink,
+        notes: updated.notes,
+        candidate: { name: updated.candidate.name, email: updated.candidate.email },
+        job: { title: updated.job.title },
+      });
+    }
+  } catch (error) {
+    console.error("[Google Calendar] Falha ao atualizar evento:", error instanceof Error ? error.message : error);
+  }
 
   await logActivity(user.organizationId, user.id, "INTERVIEW_UPDATED", `Entrevista foi atualizada.`, existing.candidateId);
 
@@ -781,6 +846,17 @@ export async function cancelInterview(interviewId: string) {
   if (!interview) throw new Error("Entrevista não encontrada");
 
   await db.interview.update({ where: { id: interviewId }, data: { status: "CANCELED" } });
+
+  // Remove o evento do Google Calendar (best-effort).
+  try {
+    if (interview.googleEventId && (await isGoogleConnected(interview.interviewerId))) {
+      await deleteCalendarEvent(interview.interviewerId, interview.googleEventId);
+    }
+  } catch (error) {
+    console.error("[Google Calendar] Falha ao deletar evento:", error instanceof Error ? error.message : error);
+  }
+
+  await db.interview.update({ where: { id: interviewId }, data: { googleEventId: null } });
 
   await logActivity(
     user.organizationId,
@@ -1096,4 +1172,24 @@ export async function createNotification(data: {
   });
 
   revalidatePath("/dashboard");
+}
+
+export async function updateInterviewReminder(interviewId: string, minutes: number) {
+  const user = await requireSession();
+
+  const interview = await db.interview.findFirst({
+    where: { id: interviewId, organizationId: user.organizationId },
+  });
+  if (!interview) throw new Error("Entrevista não encontrada");
+
+  await db.interview.update({
+    where: { id: interviewId },
+    data: {
+      reminderMinutes: minutes || null,
+      // Trocar/desativar o lembrete rearma o envio (ou desarma se null).
+      reminderSent: false,
+    },
+  });
+
+  revalidatePath("/agenda");
 }

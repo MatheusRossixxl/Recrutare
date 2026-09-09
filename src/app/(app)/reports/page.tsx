@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PIPELINE_STAGE_LABELS } from "@/lib/constants";
+import { PdfExportButton } from "@/components/reports/pdf-export-button";
 
 export default async function ReportsPage() {
   const user = await requireSession();
@@ -129,11 +130,35 @@ const averageProcessTime =
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Relatórios</h2>
-        <p className="text-sm text-muted-foreground">
-          Acompanhe os principais indicadores do seu processo de recrutamento.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Relatórios</h2>
+          <p className="text-sm text-muted-foreground">
+            Acompanhe os principais indicadores do seu processo de recrutamento.
+          </p>
+        </div>
+        <PdfExportButton
+          data={{
+            organizationName: user.organizationName || "Recrutare",
+            dateRange: "Últimos 30 dias",
+            kpis: [
+              { label: "Vagas abertas", value: String(openJobs) },
+              { label: "Candidaturas", value: String(totalApplications) },
+              { label: "Contratados", value: String(hiredCount) },
+              { label: "Taxa de contratação", value: `${hiringRate}%` },
+            ],
+            stages: candidatesByStage.map((s) => ({
+              name: PIPELINE_STAGE_LABELS[s.stage] ?? s.stage,
+              count: s._count._all,
+            })),
+            companies: jobsByCompany.map((c) => ({
+              name: companyMap.get(c.companyId) ?? "Desconhecida",
+              count: c._count._all,
+            })),
+            averageProcessTime,
+            hiringRate,
+          }}
+        />
       </div>
 
       {/* Indicadores principais */}

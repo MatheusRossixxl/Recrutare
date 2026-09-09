@@ -37,7 +37,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
   if (!job) notFound();
 
   const activeApplicationsCount = job.applications.filter(
-    (a) => a.stage !== "HIRED" && a.stage !== "REJECTED"
+    (a) => a.stage !== "HIRED" && a.stage !== "REPROVED" && a.stage !== "DISQUALIFICATION" && a.stage !== "WITHDRAWAL"
   ).length;
 
   return (

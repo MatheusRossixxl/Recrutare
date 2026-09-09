@@ -115,7 +115,7 @@ const skills = candidate.skills
   );
 
   const activeApplicationsCount = candidate.applications.filter(
-    (a) => a.stage !== "HIRED" && a.stage !== "REJECTED"
+    (a) => a.stage !== "HIRED" && a.stage !== "REPROVED" && a.stage !== "DISQUALIFICATION" && a.stage !== "WITHDRAWAL"
   ).length;
 
   return (
@@ -399,6 +399,9 @@ const skills = candidate.skills
                           <li key={h.id}>
                             {formatDateTime(h.createdAt)} — movido para {PIPELINE_STAGE_LABELS[h.toStage]}
                             {h.changedByName ? ` por ${h.changedByName}` : ""}
+                            {h.note ? (
+                              <span className="mt-0.5 block text-foreground/80">“{h.note}”</span>
+                            ) : null}
                           </li>
                         ))}
                       </ul>

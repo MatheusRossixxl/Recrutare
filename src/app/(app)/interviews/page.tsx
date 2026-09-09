@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, CalendarDays, Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
 import { INTERVIEW_STATUS_LABELS, INTERVIEW_STATUS_VARIANT, INTERVIEW_TYPE_LABELS } from "@/lib/constants";
 import { InterviewActions } from "@/components/interviews/interview-actions";
+import { GoogleToast } from "@/components/interviews/google-toast";
 
 export default async function InterviewsPage({
   searchParams,
@@ -21,7 +22,7 @@ export default async function InterviewsPage({
   const interviews = await db.interview.findMany({
     where: {
       organizationId: user.organizationId,
-      ...(status ? { status } : {}),
+      ...(status ? { status: status as any } : {}),
     },
     orderBy: { scheduledAt: "desc" },
     include: { candidate: true, job: true, interviewer: true },
@@ -29,16 +30,24 @@ export default async function InterviewsPage({
 
   return (
     <div className="space-y-6">
+      <GoogleToast />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Entrevistas</h2>
           <p className="text-sm text-muted-foreground">Agendamentos e acompanhamento de entrevistas.</p>
         </div>
-        <Button asChild>
-          <Link href="/interviews/new">
-            <Plus className="h-4 w-4" /> Novo agendamento
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/agenda">
+              <CalendarDays className="h-4 w-4" /> Agenda
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/interviews/new">
+              <Plus className="h-4 w-4" /> Novo agendamento
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <form className="flex flex-wrap items-center gap-3" method="get">

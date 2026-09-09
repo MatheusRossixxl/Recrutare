@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, ContractType, WorkModel, JobStatus, PipelineStage } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
@@ -106,11 +106,11 @@ async function main() {
           niceToHave: "Inglês intermediário, experiência em startups",
           salaryMin: j.salaryMin,
           salaryMax: j.salaryMax,
-          contractType: j.contractType,
-          workModel: j.workModel,
+          contractType: j.contractType as ContractType,
+          workModel: j.workModel as WorkModel,
           location: pick(CITIES),
           openings: 1,
-          status: j.status,
+          status: j.status as JobStatus,
           openedAt: j.status !== "DRAFT" ? new Date() : null,
         },
       })
@@ -118,15 +118,15 @@ async function main() {
   }
 
   console.log("Criando candidatos e candidaturas...");
-  const stages: string[] = [
+  const stages: PipelineStage[] = [
 "NEW", "NEW", "NEW",
 "SCREENING", "SCREENING",
 "INTERVIEW", "INTERVIEW",
 "TEST",
 "CLIENT_INTERVIEW",
-"APPROVED",
+"APPROVED_CLIENT",
 "HIRED",
-"REJECTED", "REJECTED",
+"REPROVED", "REPROVED",
   ];
 
   const candidates = [];
@@ -161,7 +161,7 @@ async function main() {
           jobId: job.id,
           candidateId: candidate.id,
           stage,
-          isFinalist: stage === "APPROVED" || stage === "HIRED",
+          isFinalist: stage === "APPROVED_CLIENT" || stage === "HIRED",
         },
       });
       await db.stageHistory.create({

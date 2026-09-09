@@ -45,7 +45,7 @@ export default async function CandidatesPage({
           ? {
               applications: {
                 some: {
-                  stage,
+                  stage: stage as any,
                 },
               },
             }
@@ -83,7 +83,7 @@ export default async function CandidatesPage({
           ? {
               applications: {
                 some: {
-                  stage,
+                  stage: stage as any,
                 },
               },
             }

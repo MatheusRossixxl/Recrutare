@@ -1,0 +1,20 @@
+# ============================================================
+# Recrutare — Cloudflare Workers via @opennextjs/cloudflare
+# Etapa 1: apenas adapter + config. Banco, PDF, cron e envs
+# de produção serão tratados nas próximas etapas.
+# ============================================================
+
+name = "recrutare"
+compatibility_date = "2025-09-26"
+compatibility_flags = ["nodejs_als", "nodejs_compat_v2"]
+
+# Entry gerado pelo adapter (opennextjs-cloudflare build).
+main = ".open-next/worker.js"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Observabilidade mínima (sem custo).
+[observability]
+enabled = true

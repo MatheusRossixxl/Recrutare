@@ -42,12 +42,16 @@ export const CONTRACT_TYPE_LABELS: Record<string, string> = {
 export const PIPELINE_STAGES = [
   "NEW",
   "SCREENING",
+  "CONTACT",
   "INTERVIEW",
-  "TEST",
+  "APPROVED_INTERVIEW",
   "CLIENT_INTERVIEW",
-  "APPROVED",
-  "REJECTED",
+  "APPROVED_CLIENT",
+  "TEST",
   "HIRED",
+  "DISQUALIFICATION",
+  "REPROVED",
+  "WITHDRAWAL",
 ] as const;
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
@@ -55,12 +59,16 @@ export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 export const PIPELINE_STAGE_LABELS: Record<string, string> = {
   NEW: "Novo",
   SCREENING: "Triagem",
+  CONTACT: "Contato",
   INTERVIEW: "Entrevista",
-  TEST: "Teste",
+  APPROVED_INTERVIEW: "Aprovado na entrevista",
   CLIENT_INTERVIEW: "Entrevista com cliente",
-  APPROVED: "Aprovado",
-  REJECTED: "Reprovado",
+  APPROVED_CLIENT: "Aprovado pelo cliente",
+  TEST: "Teste",
   HIRED: "Contratado",
+  DISQUALIFICATION: "Desclassificado",
+  REPROVED: "Reprovado",
+  WITHDRAWAL: "Desistência",
 };
 
 // Cor de cada etapa — usada de forma consistente no Kanban, badges e
@@ -68,12 +76,16 @@ export const PIPELINE_STAGE_LABELS: Record<string, string> = {
 export const PIPELINE_STAGE_COLOR: Record<string, string> = {
   NEW: "bg-slate-400",
   SCREENING: "bg-sky-400",
+  CONTACT: "bg-teal-400",
   INTERVIEW: "bg-violet-500",
-  TEST: "bg-amber-500",
+  APPROVED_INTERVIEW: "bg-emerald-500",
   CLIENT_INTERVIEW: "bg-cyan-500",
-  APPROVED: "bg-lime-500",
-  REJECTED: "bg-rose-500",
+  APPROVED_CLIENT: "bg-lime-500",
+  TEST: "bg-amber-500",
   HIRED: "bg-emerald-500",
+  DISQUALIFICATION: "bg-rose-500",
+  REPROVED: "bg-rose-500",
+  WITHDRAWAL: "bg-orange-400",
 };
 
 // Mapeamento das etapas antigas (usadas antes desta migração) para as
@@ -87,7 +99,8 @@ export const LEGACY_PIPELINE_STAGE_MAP: Record<string, PipelineStage> = {
   EVALUATION: "TEST",
   FINALIST: "CLIENT_INTERVIEW",
   HIRED: "HIRED",
-  REJECTED: "REJECTED",
+  REJECTED: "REPROVED",
+  APPROVED: "APPROVED_CLIENT",
 };
 
 export const INTERVIEW_STATUS_LABELS: Record<string, string> = {
@@ -117,4 +130,41 @@ export const RECOMMENDATION_LABELS: Record<string, string> = {
   ADVANCE: "Avançar",
   KEEP_IN_ANALYSIS: "Manter em análise",
   REJECT: "Não avançar",
+};
+
+export const FINAL_STAGES = ["HIRED", "REPROVED", "DISQUALIFICATION", "WITHDRAWAL"] as const;
+
+// Etapas que exigem observação obrigatória ao mover (server + dialog + board usam esta lista).
+export const NOTE_REQUIRED_STAGES: readonly PipelineStage[] = ["DISQUALIFICATION", "REPROVED", "WITHDRAWAL"];
+
+export const DISQUALIFICATION_TYPES = [
+  { value: "SKILLS", label: "Falta de competências técnicas" },
+  { value: "EXPERIENCE", label: "Experiência insuficiente" },
+  { value: "CULTURE", label: "Incompatibilidade cultural" },
+  { value: "SALARY", label: "Expectativa salarial" },
+  { value: "AVAILABILITY", label: "Indisponibilidade" },
+  { value: "OTHER", label: "Outro motivo" },
+] as const;
+
+export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  COMPANY_CREATED: "Empresa criada",
+  COMPANY_UPDATED: "Empresa atualizada",
+  COMPANY_ARCHIVED: "Empresa arquivada",
+  COMPANY_RESTORED: "Empresa restaurada",
+  JOB_CREATED: "Vaga criada",
+  JOB_UPDATED: "Vaga atualizada",
+  JOB_ARCHIVED: "Vaga arquivada",
+  JOB_RESTORED: "Vaga restaurada",
+  CANDIDATE_CREATED: "Candidato criado",
+  CANDIDATE_UPDATED: "Candidato atualizado",
+  CANDIDATE_ARCHIVED: "Candidato arquivado",
+  CANDIDATE_RESTORED: "Candidato restaurado",
+  STAGE_CHANGE: "Etapa alterada",
+  INTERVIEW_SCHEDULED: "Entrevista agendada",
+  INTERVIEW_COMPLETED: "Entrevista concluída",
+  INTERVIEW_CANCELLED: "Entrevista cancelada",
+  USER_CREATED: "Usuário criado",
+  USER_UPDATED: "Usuário atualizado",
+  APPLICATION_CREATED: "Candidatura criada",
+  APPLICATION_REMOVED: "Candidatura removida",
 };

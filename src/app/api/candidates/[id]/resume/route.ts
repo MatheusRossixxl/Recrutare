@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractText } from "unpdf";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
 import { logActivity } from "@/lib/actions";
-
-export const runtime = "nodejs";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -57,15 +56,12 @@ export async function POST(
       );
     }
 
-    // 1. Lê o PDF diretamente em memória.
+    // 1. Lê o PDF diretamente em memória (edge-compatible, sem Buffer).
     // Nada é salvo no disco.
-    const buffer = Buffer.from(await file.arrayBuffer());
-
     // 2. Extrai o texto do PDF.
-    const pdfParse = (await import("pdf-parse")).default;
-    const parsed = await pdfParse(buffer);
+    const { text } = await extractText(new Uint8Array(await file.arrayBuffer()), { mergePages: true });
 
-    const rawText = parsed.text?.trim();
+    const rawText = (Array.isArray(text) ? text.join("\n") : text).trim();
 
     if (!rawText) {
       return NextResponse.json(

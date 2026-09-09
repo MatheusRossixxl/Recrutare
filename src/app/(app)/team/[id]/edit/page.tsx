@@ -70,7 +70,7 @@ export default async function EditTeamMemberPage({
     const data: {
       name: string;
       email: string;
-      role: string;
+      role: any;
       passwordHash?: string;
     } = {
       name,

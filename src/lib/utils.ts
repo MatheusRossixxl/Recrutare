@@ -60,3 +60,19 @@ export function toInputTime(date?: Date | string | null) {
   if (Number.isNaN(d.getTime())) return "";
   return d.toTimeString().slice(0, 5);
 }
+
+export function formatRelativeTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return "agora";
+  if (diffMin < 60) return `há ${diffMin}min`;
+  if (diffHr < 24) return `há ${diffHr}h`;
+  if (diffDay < 7) return `há ${diffDay}d`;
+  return formatDate(d);
+}
