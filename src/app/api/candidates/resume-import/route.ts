@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractText } from "unpdf";
+import { definePDFJSModule, extractText } from "unpdf";
 
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
 import { logActivity } from "@/lib/actions";
+
+// Usa o bundle serverless do unpdf (sem fs): evita que o resolver Node
+// tente ler fonts/cmaps do disco — incompatível com Cloudflare Workers.
+await definePDFJSModule(() => import("unpdf/pdfjs"));
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
