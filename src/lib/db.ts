@@ -22,23 +22,37 @@ function getDatabaseUrl(): string {
   throw new Error("DATABASE_URL não configurada");
 }
 
+// Singleton global SOMENTE em desenvolvimento local (evita esgotar
+// conexões no hot reload do Next.js). Em produção/Workers este cache
+// nunca é usado: o runtime proíbe reutilizar objetos de I/O entre
+// requests ("Cannot perform I/O on behalf of a different request").
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+function createClient(): PrismaClient {
+  const pool = new Pool({ connectionString: getDatabaseUrl() });
+  const adapter = new PrismaNeon(pool);
+  return new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
+}
+
 function getClient(): PrismaClient {
-  if (!globalForPrisma.prisma) {
-    const pool = new Pool({ connectionString: getDatabaseUrl() });
-    const adapter = new PrismaNeon(pool);
-    globalForPrisma.prisma = new PrismaClient({
-      adapter,
-      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    });
+  if (process.env.NODE_ENV === "development") {
+    if (!globalForPrisma.prisma) {
+      globalForPrisma.prisma = createClient();
+    }
+    return globalForPrisma.prisma;
   }
-  return globalForPrisma.prisma;
+  // Produção/Workers: cliente novo a cada uso. Com poolQueryViaFetch
+  // cada query é um HTTPS stateless, então criar o Pool é barato e
+  // nada é compartilhado entre requests.
+  return createClient();
 }
 
 // Proxy lazy: não cria Pool no import (boot do Worker tem env
 // incompleto e nenhuma request ativa). Instancia no primeiro uso
-// dentro do request e reutiliza no mesmo isolate.
+// dentro do request.
 export const db: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop, _receiver) {
     const client = getClient();
