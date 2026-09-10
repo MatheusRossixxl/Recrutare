@@ -18,24 +18,30 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
-          include: { organization: true },
-        });
-        if (!user) return null;
-        if (!user.active) return null;
+        try {
+          const user = await db.user.findUnique({
+            where: { email: credentials.email.toLowerCase().trim() },
+            include: { organization: true },
+          });
+          if (!user) return null;
+          if (!user.active) return null;
 
-        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
+          const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+          if (!valid) return null;
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          organizationId: user.organizationId,
-          organizationName: user.organization.name,
-        };
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            organizationId: user.organizationId,
+            organizationName: user.organization.name,
+          };
+        } catch {
+          // DB fora do ar (ex.: Worker sem conexão): falha vira
+          // CredentialsSignin, nunca 500 com HTML.
+          return null;
+        }
       },
     }),
   ],
@@ -51,27 +57,38 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user && token.id) {
-        const currentUser = await db.user.findUnique({
-          where: { id: token.id as string },
-          include: { organization: true },
-        });
+        // Base: claims do JWT (sempre disponíveis, sem DB).
+        session.user.id = token.id as string;
+        session.user.role = (token.role as string) ?? "";
+        session.user.organizationId = (token.organizationId as string) ?? "";
+        session.user.organizationName = (token.organizationName as string) ?? "";
 
-        if (!currentUser || !currentUser.active) {
-          session.user.id = "";
-          session.user.name = "";
-          session.user.email = "";
-          session.user.role = "";
-          session.user.organizationId = "";
-          session.user.organizationName = "";
-          return session;
+        try {
+          const currentUser = await db.user.findUnique({
+            where: { id: token.id as string },
+            include: { organization: true },
+          });
+
+          // Usuário removido/desativado: limpa a sessão.
+          if (!currentUser || !currentUser.active) {
+            session.user.id = "";
+            session.user.name = "";
+            session.user.email = "";
+            session.user.role = "";
+            session.user.organizationId = "";
+            session.user.organizationName = "";
+            return session;
+          }
+
+          session.user.id = currentUser.id;
+          session.user.name = currentUser.name;
+          session.user.email = currentUser.email;
+          session.user.role = currentUser.role;
+          session.user.organizationId = currentUser.organizationId;
+          session.user.organizationName = currentUser.organization.name;
+        } catch {
+          // DB fora do ar: mantém claims do JWT em vez de estourar 500.
         }
-
-        session.user.id = currentUser.id;
-        session.user.name = currentUser.name;
-        session.user.email = currentUser.email;
-        session.user.role = currentUser.role;
-        session.user.organizationId = currentUser.organizationId;
-        session.user.organizationName = currentUser.organization.name;
       }
 
       return session;
