@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { definePDFJSModule, extractText } from "unpdf";
 
 import { db } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
-import { logActivity } from "@/lib/actions";
 
 // Usa o bundle serverless do unpdf (sem fs): evita que o resolver Node
 // tente ler fonts/cmaps do disco — incompatível com Cloudflare Workers.
@@ -14,7 +13,7 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireSession();
+    const user = await requireApiSession();
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -100,15 +99,6 @@ export async function POST(request: NextRequest) {
         success: true,
         extraction,
         fileName,
-      },
-      { status: 200 }
-    );
-
-    return NextResponse.json(
-      {
-        success: true,
-        fileName,
-        extraction,
       },
       { status: 200 }
     );

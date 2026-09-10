@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireApiSession();
     const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
 
     if (!q) {

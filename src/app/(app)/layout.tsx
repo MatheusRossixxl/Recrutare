@@ -12,7 +12,7 @@ export default async function AppLayout({
 }) {
   const session = await getSession();
 
-  if (!session?.user) {
+  if (!session?.user?.id || !session.user.organizationId) {
     redirect("/login");
   }
 

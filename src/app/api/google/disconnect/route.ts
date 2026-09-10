@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { disconnectGoogle } from "@/lib/google";
 
 function baseUrl(request: Request): string {
@@ -7,9 +7,16 @@ function baseUrl(request: Request): string {
 }
 
 export async function POST(request: Request) {
-  const user = await requireSession();
+  try {
+    const user = await requireApiSession();
 
-  await disconnectGoogle(user.id);
+    await disconnectGoogle(user.id);
 
-  return NextResponse.redirect(new URL("/interviews?google=disconnected", baseUrl(request)));
+    return NextResponse.redirect(new URL("/interviews?google=disconnected", baseUrl(request)));
+  } catch (err) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      return NextResponse.redirect(new URL("/login", baseUrl(request)));
+    }
+    throw err;
+  }
 }

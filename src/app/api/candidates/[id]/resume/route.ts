@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { definePDFJSModule, extractText } from "unpdf";
 import { db } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { aiService } from "@/services/ai-service";
 import { logActivity } from "@/lib/actions";
 
@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireSession();
+    const user = await requireApiSession();
 
     const candidate = await db.candidate.findFirst({
       where: {

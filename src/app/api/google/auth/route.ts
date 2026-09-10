@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { getGoogleAuthUrl } from "@/lib/google";
 
 export async function GET() {
-  const user = await requireSession();
-  const url = getGoogleAuthUrl(user.id);
-  return NextResponse.redirect(url);
+  try {
+    const user = await requireApiSession();
+    const url = getGoogleAuthUrl(user.id);
+    return NextResponse.redirect(url);
+  } catch {
+    return NextResponse.redirect(new URL("/login", process.env.NEXTAUTH_URL ?? "http://localhost:3000"));
+  }
 }

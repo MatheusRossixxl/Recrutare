@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const user = await requireSession();
+    const user = await requireApiSession();
 
     const notifications = await db.notification.findMany({
       where: {

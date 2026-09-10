@@ -1,0 +1,23 @@
+diff --git a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+index 11b73af..4643a09 100644
+--- a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
++++ b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+@@ -109,6 +109,18 @@ export async function bundleServer(buildOpts, projectOpts) {
+             // `@next/env` is used by Next to load environment variables from files.
+             // OpenNext inlines the values at build time so this is not needed.
+             "@next/env": path.join(buildOpts.outputDir, "cloudflare-templates/shims/env.js"),
++            // `fs` does not exist in workerd. node-fs-methods needs the API surface; resolve to functional stub.
++            "fs": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/fs.js",
++            "node:fs": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/fs.js",
++            // `http` is also not available as a Node builtin in workerd.
++            "http": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/http.js",
++            "node:http": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/http.js",
++            // `https` is also not available as a Node builtin in workerd.
++            "https": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/https.js",
++            "node:https": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/https.js",
++            // `os` is also not available as a Node builtin in workerd.
++            "os": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/os.js",
++            "node:os": "/Users/mac/Downloads/rh-saas-fase-completa/opennext-shims/os.js",
+         },
+         define: {
+             // config file used by Next.js, see: https://github.com/vercel/next.js/blob/68a7128/packages/next/src/build/utils.ts#L2137-L2139

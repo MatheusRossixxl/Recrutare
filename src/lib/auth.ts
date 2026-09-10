@@ -84,22 +84,37 @@ export function getSession() {
   return getServerSession(authOptions);
 }
 
+export type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  organizationId: string;
+  organizationName: string;
+};
+
 /**
- * Garante que existe uma sessão autenticada e retorna os dados do usuário
- * já com organizationId — usar em toda página/rota protegida para
- * garantir o isolamento multi-tenant.
+ * Uso em Server Components / Server Actions (páginas).
+ * Sem sessão válida → redirect("/login"), nunca estoura erro na tela.
  */
-export async function requireSession() {
-  const session = await getSession();
-  if (!session?.user?.organizationId) {
+export async function requireSession(): Promise<SessionUser> {
+  const { redirect } = await import("next/navigation");
+  const user = (await getSession())?.user;
+  if (!user?.id || !user.organizationId) {
+    redirect("/login");
+  }
+  return user as SessionUser;
+}
+
+/**
+ * Uso em Route Handlers (API).
+ * Sem sessão válida → throw, rota captura e responde 401 JSON.
+ * Nunca usar em páginas: throw em Server Component vira error.tsx/500.
+ */
+export async function requireApiSession(): Promise<SessionUser> {
+  const user = (await getSession())?.user;
+  if (!user?.id || !user.organizationId) {
     throw new Error("UNAUTHORIZED");
   }
-  return session.user as {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    organizationId: string;
-    organizationName: string;
-  };
+  return user as SessionUser;
 }

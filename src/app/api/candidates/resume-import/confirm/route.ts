@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/lib/db";
-import { requireSession } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth";
 
 type Extraction = {
   name?: string | null;
@@ -35,7 +35,7 @@ type Extraction = {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
+    const user = await requireApiSession();
 
     const body = await request.json();
 
