@@ -556,25 +556,26 @@ export async function moveApplicationStage(applicationId: string, toStage: Pipel
     throw new Error("Observação obrigatória para esta etapa.");
   }
 
-  await db.$transaction([
-    db.application.update({
-      where: { id: applicationId },
-      data: {
-        stage: toStage,
-        isFinalist: toStage === "APPROVED_CLIENT" || toStage === "CLIENT_INTERVIEW" || application.isFinalist,
-      },
-    }),
-    db.stageHistory.create({
-      data: {
-        applicationId,
-        fromStage: application.stage,
-        toStage,
-        // Observação registrada no histórico SOMENTE para as 3 etapas exigidas.
-        note: (NOTE_REQUIRED_STAGES as readonly string[]).includes(toStage) ? trimmedNote : null,
-        changedByName: user.name,
-      },
-    }),
-  ]);
+  // Sem $transaction: o adapter HTTP do Neon (fetch stateless, exigido
+  // pelo Workers) não suporta transações interativas. Sequencial é
+  // suficiente aqui (update + insert de histórico, sem invariante crítica).
+  await db.application.update({
+    where: { id: applicationId },
+    data: {
+      stage: toStage,
+      isFinalist: toStage === "APPROVED_CLIENT" || toStage === "CLIENT_INTERVIEW" || application.isFinalist,
+    },
+  });
+  await db.stageHistory.create({
+    data: {
+      applicationId,
+      fromStage: application.stage,
+      toStage,
+      // Observação registrada no histórico SOMENTE para as 3 etapas exigidas.
+      note: (NOTE_REQUIRED_STAGES as readonly string[]).includes(toStage) ? trimmedNote : null,
+      changedByName: user.name,
+    },
+  });
 
   await logActivity(
     user.organizationId,
@@ -671,14 +672,15 @@ export async function removeCandidateFromJob(applicationId: string) {
 
   if (!application) throw new Error("Candidatura não encontrada");
 
-  await db.$transaction(async (tx) => {
-    await tx.stageHistory.deleteMany({
-      where: { applicationId },
-    });
+  // Sem $transaction: ver comentário em moveApplicationStage (adapter
+  // HTTP não suporta transações interativas no Workers). Ordem importa:
+  // filhos primeiro, depois o pai.
+  await db.stageHistory.deleteMany({
+    where: { applicationId },
+  });
 
-    await tx.application.delete({
-      where: { id: applicationId },
-    });
+  await db.application.delete({
+    where: { id: applicationId },
   });
 
   await logActivity(
